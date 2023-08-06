@@ -1,0 +1,39 @@
+#!/bin/bash
+#
+# This script downloads the latest Debian stable network install image and verifies it
+
+set -e
+
+# Variables
+stableISO=$(curl --silent https://debian.osuosl.org/debian-cdimage/current/amd64/iso-cd/ | \
+    grep --only-matching "debian-[0-9.]*-amd64-netinst.iso" | \
+    uniq)
+## Terminal colour output
+### Escape = \033[, colour code = 1; (bold), 32m (colour) 
+green="\033[0;32m"
+resetColour="\033[m"
+
+printf "\n%b%s%b\n" "${green}" "Creating ISO directory if it doesn't already exist at ~/Downloads/ISO/" "${resetColour}"
+
+if test -d "$HOME/Downloads/ISO"
+then
+    cd "$HOME"/Downloads/ISO || exit
+else
+    mkdir --parents "$HOME"/Downloads/ISO/ && cd "$HOME"/Downloads/ISO/ || exit
+fi
+
+printf "\n%b%s%b\n\n" "${green}" "Downloading the latest Debian stable ISO image, checksum, and signature files" "${resetColour}"
+
+wget https://debian.osuosl.org/debian-cdimage/current/amd64/iso-cd/"${stableISO}"
+wget https://mirrors.ocf.berkeley.edu/debian-cd/current/amd64/iso-cd/SHA512SUMS 
+wget https://mirrors.ocf.berkeley.edu/debian-cd/current/amd64/iso-cd/SHA512SUMS.sign
+
+printf "\n%b%s\n" "${green}" "Verifying image signature"
+printf "%s%b\n\n" "Debian signing keys can be found at https://www.debian.org/CD/verify" "${resetColour}"
+
+gpg --keyserver keyring.debian.org --recv-keys 0xDA87E80D6294BE9B
+gpg --verify SHA512SUMS.sign
+
+printf "\n%b%s%b\n\n" "${green}" "Verifying checksum" "${resetColour}"
+
+sha512sum --check --ignore-missing SHA512SUMS | grep --color=auto --ignore-case "Ok"
